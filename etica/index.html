@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego: Liderazgo Ético y RS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light Blue Gray */
+        }
+        .concept-card, .description-card {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            border-radius: 0.5rem;
+            margin-bottom: 0.75rem;
+            padding: 1rem;
+            font-weight: 600;
+        }
+
+        /* Columna A: Conceptos */
+        .concept-card {
+            background-color: #1e40af; /* Blue-700 */
+            color: white;
+            border: 3px solid transparent;
+        }
+        .concept-selected {
+            background-color: #3b82f6; /* Blue-500 */
+            border-color: #fbbf24; /* Amber-400 */
+            transform: scale(1.02);
+        }
+        .concept-matched {
+            background-color: #10b981; /* Emerald-500 */
+            pointer-events: none;
+            cursor: default;
+        }
+        .concept-error {
+            background-color: #ef4444; /* Red-500 */
+            animation: shake 0.5s;
+        }
+
+        /* Columna B: Descripciones */
+        .description-card {
+            background-color: white;
+            color: #1f2937; /* Gray-800 */
+            border: 3px solid transparent;
+        }
+        .description-selected {
+            border-color: #3b82f6; /* Blue-500 */
+            transform: scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        }
+        .description-matched {
+            background-color: #e6f7f2; /* Light Green */
+            border-color: #10b981; /* Emerald-500 */
+            pointer-events: none;
+            cursor: default;
+        }
+        .description-error {
+            border-color: #ef4444; /* Red-500 */
+            animation: shake 0.5s;
+        }
+
+        /* Animación para error */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        .final-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(30, 64, 175, 0.95); /* Semi-transparent blue */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="app" class="max-w-6xl mx-auto">
+        <header class="text-center mb-8 bg-white p-6 rounded-xl shadow-lg">
+            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Juego Conceptual: Liderazgo Ético 🤝</h1>
+            <p class="text-gray-600">Relaciona cada concepto clave con su descripción correcta.</p>
+            <div class="mt-4 flex justify-between items-center text-lg font-bold text-gray-700">
+                <span id="score" class="text-xl text-blue-700">Pares Encontrados: 0/15</span>
+                <button id="reset-button" class="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                    Reiniciar Juego
+                </button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Columna A: Conceptos -->
+            <div>
+                <h2 class="text-2xl font-bold mb-4 text-gray-700 border-b-2 border-blue-500 pb-2">Columna A: Conceptos Clave</h2>
+                <div id="concepts-container">
+                    <!-- Cards will be injected here -->
+                </div>
+            </div>
+
+            <!-- Columna B: Descripciones -->
+            <div>
+                <h2 class="text-2xl font-bold mb-4 text-gray-700 border-b-2 border-blue-500 pb-2">Columna B: Descripciones</h2>
+                <div id="descriptions-container">
+                    <!-- Cards will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mensaje Final -->
+    <div id="final-message" class="final-message hidden">
+        <div class="bg-white p-10 rounded-xl shadow-2xl text-center max-w-md transform transition duration-500 scale-100">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-3xl font-bold text-blue-700 mb-4">¡Juego Completado!</h2>
+            <p class="text-xl text-gray-700 mb-6">Has relacionado correctamente los 15 conceptos. ¡Excelente comprensión lectora!</p>
+            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-bold transition duration-150 shadow-lg">
+                Jugar de Nuevo
+            </button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- 1. DATOS DEL JUEGO ---
+        // Solución: {Concept_ID: Description_ID}
+        const SOLUTION = {
+            1: 'H', 2: 'L', 3: 'E', 4: 'A', 5: 'N', 6: 'F', 7: 'D', 8: 'C', 9: 'K', 10: 'M',
+            11: 'J', 12: 'I', 13: 'B', 14: 'O', 15: 'G'
+        };
+
+        const CONCEPTS = [
+            { id: 1, text: "Liderazgo Ético" },
+            { id: 2, text: "Responsabilidad Social (RS)" },
+            { id: 3, text: "Bien Común" },
+            { id: 4, text: "Stakeholder" },
+            { id: 5, text: "Análisis de Partes Interesadas" },
+            { id: 6, text: "Integridad" },
+            { id: 7, text: "Toma de Decisiones" },
+            { id: 8, text: "Principios Morales" },
+            { id: 9, text: "Justicia" },
+            { id: 10, text: "Equidad" },
+            { id: 11, text: "Impacto Social" },
+            { id: 12, text: "Ciudadanía Activa" },
+            { id: 13, text: "Modelo de Decisión Ética" },
+            { id: 14, text: "RSE / RSC (Acrónimo)" },
+            { id: 15, text: "Ética Aplicada" }
+        ];
+
+        const DESCRIPTIONS = [
+            { id: 'A', text: "Individuo, grupo u organización (ej. empleados, vecinos, el planeta) que **afecta o es afectado** por una acción o decisión." },
+            { id: 'B', text: "Proceso estructurado que se utiliza para **evaluar el impacto** de una acción en la comunidad, como el Análisis de Partes Interesadas." },
+            { id: 'C', text: "Valores fundamentales (como la honestidad y el respeto) que sirven de **base inamovible** para la actuación de un líder ético." },
+            { id: 'D', text: "El acto de elegir una opción entre varias, el cual debe estar basado en el bien común para ser considerado **responsable y ético**." },
+            { id: 'E', text: "El principio fundamental que orienta las elecciones ciudadanas responsables; implica buscar el **beneficio para la comunidad** y el entorno sobre el interés individual." },
+            { id: 'F', text: "La característica esencial que exige el Liderazgo Ético: una **coherencia total** y constante entre lo que se dice y lo que se hace." },
+            { id: 'G', text: "El campo de estudio que toma los principios morales y los usa para resolver dilemas **prácticos**, como la elección de materiales en un evento escolar." },
+            { id: 'H', text: "La capacidad de guiar a otros (o guiarte a ti mismo) basándose en valores y actuando como el **motor** que impulsa las decisiones hacia el beneficio colectivo." },
+            { id: 'I', text: "El rol del estudiante que aplica la RS al **decidir conscientemente** en favor de la comunidad y del entorno, actuando con conciencia de sistema." },
+            { id: 'J', text: "La consecuencia, ya sea positiva o negativa, que una acción o elección genera en un *stakeholder* o en el medio ambiente." },
+            { id: 'K', text: "Asegurar que las **reglas y oportunidades** sean equilibradas y correctas para todos los afectados, especialmente los más vulnerables." },
+            { id: 'L', text: "La **obligación** consciente de un individuo o institución de **considerar el impacto** de sus acciones en la sociedad y el medio ambiente, yendo más allá del simple cumplimiento legal." },
+            { id: 'M', text: "Valor que promueve un trato **balanceado y justo**, asegurando que las oportunidades sean adecuadas a las necesidades, no necesariamente idénticas." },
+            { id: 'N', text: "Proceso clave para la toma de decisiones éticas que requiere **identificar, evaluar el impacto** y priorizar la responsabilidad en cada grupo afectado." },
+            { id: 'O', text: "Acrónimo usado para referirse específicamente a la Responsabilidad Social aplicada al ámbito de las **empresas** o corporaciones." }
+        ];
+
+        // --- 2. ESTADO DEL JUEGO ---
+        let selectedConceptId = null;
+        let matchedPairs = 0;
+        const totalPairs = CONCEPTS.length;
+
+        // --- 3. FUNCIONES DE UTILIDAD ---
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = `Pares Encontrados: ${matchedPairs}/${totalPairs}`;
+            if (matchedPairs === totalPairs) {
+                document.getElementById('final-message').classList.remove('hidden');
+            }
+        }
+
+        // --- 4. MANEJADORES DE EVENTOS ---
+
+        function handleConceptClick(event) {
+            const card = event.currentTarget;
+            const conceptId = parseInt(card.dataset.id);
+
+            // Deseleccionar el concepto previamente seleccionado
+            document.querySelectorAll('.concept-card').forEach(c => {
+                if (c.dataset.id !== String(conceptId)) {
+                    c.classList.remove('concept-selected');
+                }
+            });
+
+            // Toggle la selección actual
+            card.classList.toggle('concept-selected');
+            selectedConceptId = card.classList.contains('concept-selected') ? conceptId : null;
+        }
+
+        function handleDescriptionClick(event) {
+            if (selectedConceptId === null) {
+                return; // No hay concepto seleccionado
+            }
+
+            const descriptionCard = event.currentTarget;
+            const descriptionId = descriptionCard.dataset.id;
+            const conceptCard = document.querySelector(`.concept-card[data-id="${selectedConceptId}"]`);
+
+            // Verificar si es un match
+            if (SOLUTION[selectedConceptId] === descriptionId) {
+                // MATCH CORRECTO
+                matchedPairs++;
+                updateScore();
+
+                // Marcar Concepto
+                conceptCard.classList.remove('concept-selected');
+                conceptCard.classList.add('concept-matched');
+                
+                // Marcar Descripción
+                descriptionCard.classList.add('description-matched');
+
+            } else {
+                // MATCH INCORRECTO: Aplicar animación de error
+                conceptCard.classList.add('concept-error');
+                descriptionCard.classList.add('description-error');
+
+                setTimeout(() => {
+                    conceptCard.classList.remove('concept-error', 'concept-selected');
+                    descriptionCard.classList.remove('description-error', 'description-selected');
+                }, 500);
+            }
+
+            // Resetear la selección
+            selectedConceptId = null;
+        }
+
+        // --- 5. RENDERIZADO INICIAL ---
+
+        function createCard(data, type) {
+            const card = document.createElement('div');
+            card.className = `${type}-card p-3 rounded-lg shadow-md transition-all duration-200`;
+            card.dataset.id = data.id;
+            card.innerHTML = `<span class="font-extrabold mr-2 text-yellow-300">${type === 'concept' ? data.id + '. ' : data.id + '. '}</span>${data.text}`;
+
+            if (type === 'concept') {
+                card.onclick = handleConceptClick;
+            } else {
+                card.onclick = handleDescriptionClick;
+            }
+
+            return card;
+        }
+
+        function initializeGame() {
+            const conceptsContainer = document.getElementById('concepts-container');
+            const descriptionsContainer = document.getElementById('descriptions-container');
+
+            // Limpiar contenedores
+            conceptsContainer.innerHTML = '';
+            descriptionsContainer.innerHTML = '';
+
+            // Mezclar Conceptos (Columna A) y Descripciones (Columna B)
+            const shuffledConcepts = shuffleArray([...CONCEPTS]);
+            const shuffledDescriptions = shuffleArray([...DESCRIPTIONS]);
+
+            // Renderizar Conceptos (Columna A)
+            shuffledConcepts.forEach(concept => {
+                conceptsContainer.appendChild(createCard(concept, 'concept'));
+            });
+
+            // Renderizar Descripciones (Columna B)
+            shuffledDescriptions.forEach(description => {
+                descriptionsContainer.appendChild(createCard(description, 'description'));
+            });
+
+            // Inicializar estado
+            matchedPairs = 0;
+            selectedConceptId = null;
+            updateScore();
+
+            document.getElementById('reset-button').onclick = initializeGame;
+        }
+
+        // Iniciar el juego al cargar la ventana
+        window.onload = initializeGame;
+    </script>
+</body>
+</html>
